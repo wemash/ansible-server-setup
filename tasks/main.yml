@@ -1,0 +1,47 @@
+---
+# tasks file for server-setup
+
+- name: Install and update core packages
+  apt: name={{ item }} update_cache=yes state=latest
+  with_items:
+    - git
+    - mcrypt
+    - vim
+
+- name: Create the User
+  user: name=web shell=/bin/bash append=yes
+
+- name: Harden TCP/IP stack against SYN floods
+  sysctl: name="net.ipv4.tcp_syncookies" value=1 sysctl_set=yes state=present reload=yes
+
+- name: Update apt keys
+  command: apt-key update
+
+- name: Update apt cache
+  apt: update_cache=yes
+
+- name: Run apt upgrade
+  apt: upgrade=yes
+
+- name: Install unattended-upgrades
+  apt: pkg=unattended-upgrades state=present
+
+- name: Adjust apt update intervals
+  template: src=apt_auto_upgrades.j2 dest=/etc/apt/apt.conf.d/20auto-upgrades
+
+- name: Make sure unattended-upgrades only installs security updates
+  lineinfile: dest=/etc/apt/apt.conf.d/50unattended-upgrades regexp="-updates" state=absent
+
+- name: Make sure unattended-upgrades only installs security updates
+  lineinfile: dest=/etc/apt/apt.conf.d/50unattended-upgrades regexp="-proposed" state=absent
+
+- name: Make sure unattended-upgrades only installs security updates
+  lineinfile: dest=/etc/apt/apt.conf.d/50unattended-upgrades regexp="-backports" state=absent
+
+- name: Install fail2ban
+  apt: package=fail2ban state=present
+
+- name: Copy fail2ban default config
+  template: src=fail2ban.conf.j2 dest=/etc/fail2ban/jail.local
+  notify:
+    - restart fail2ban
